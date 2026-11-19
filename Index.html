@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Календарь на 2027 год</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f2f2f2;
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  header h1 {
+    font-size: 26px;
+    color: #333;
+    font-weight: 600;
+  }
+
+  header h1 .icon {
+    font-size: 24px;
+    margin-right: 6px;
+  }
+
+  /* Выпадающий список месяцев */
+  .month-select-wrap {
+    max-width: 420px;
+    margin: 0 auto 18px;
+    position: relative;
+  }
+
+  select {
+    width: 100%;
+    padding: 12px 40px 12px 16px;
+    font-size: 17px;
+    color: #c0392b;
+    font-weight: 600;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    appearance: none;
+    -webkit-appearance: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,.06);
+    outline: none;
+  }
+
+  .month-select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #c0392b;
+    font-size: 18px;
+    pointer-events: none;
+  }
+
+  /* Карточка месяца */
+  .card {
+    max-width: 420px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    padding: 14px 12px 18px;
+  }
+
+  .card h2 {
+    text-align: center;
+    color: #c0392b;
+    font-size: 20px;
+    font-weight: 400;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #e5e5e5;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    font-size: 12px;
+    font-weight: 600;
+    color: #444;
+    background: #f7f7f7;
+    border: 1px solid #eee;
+    padding: 7px 0;
+  }
+
+  td {
+    text-align: center;
+    font-size: 15px;
+    padding: 8px 0;
+    border: 1px solid #f0f0f0;
+    color: #333;
+  }
+
+  td.weekend { color: #c0392b; }
+  td.holiday { background: #fdecea; font-weight: 600; }
+  td.empty   { border: none; }
+
+  .stats {
+    margin-top: 14px;
+    font-size: 14px;
+    color: #555;
+    text-align: center;
+  }
+
+  .stats b { color: #2e7d32; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="icon">📅</span>Календарь на 2027 год</h1>
+</header>
+
+<div class="month-select-wrap">
+  <select id="monthSelect"></select>
+</div>
+
+<div class="card">
+  <h2 id="monthTitle"></h2>
+  <table id="calendar"></table>
+  <div class="stats" id="stats"></div>
+</div>
+
+<script>
+const MONTHS = ['Январь','Февраль','Март','Апрель','Май','Июнь',
+                'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const YEAR = 2027;
+
+// Праздники РФ 2027 (без учёта переносов — постановление Правительства ещё не вышло)
+const HOLIDAYS = new Set([
+  '2027-01-01','2027-01-02','2027-01-03','2027-01-04','2027-01-05',
+  '2027-01-06','2027-01-07','2027-01-08',
+  '2027-02-23','2027-03-08','2027-05-01','2027-05-09',
+  '2027-06-12','2027-11-04'
+]);
+
+const select = document.getElementById('monthSelect');
+MONTHS.forEach((name, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = name + ' ' + YEAR;
+  select.appendChild(opt);
+});
+
+function render(monthIndex) {
+  const first = new Date(YEAR, monthIndex, 1);
+  const daysInMonth = new Date(YEAR, monthIndex + 1, 0).getDate();
+
+  document.getElementById('monthTitle').textContent = MONTHS[monthIndex];
+
+  // Сдвиг: неделя начинается с ПН (0 = ПН)
+  const offset = (first.getDay() + 6) % 7;
+
+  let html = '<tr>' + ['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС']
+    .map(d => `<th>${d}</th>`).join('') + '</tr><tr>';
+
+  for (let i = 0; i < offset; i++) html += '<td class="empty"></td>';
+
+  let workDays = 0;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(YEAR, monthIndex, d);
+    const dow = date.getDay(); // 0 = ВС, 6 = СБ
+    const iso = `${YEAR}-${String(monthIndex+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isWeekend = dow === 0 || dow === 6;
+    const isHoliday = HOLIDAYS.has(iso);
+
+    let cls = '';
+    if (isWeekend || isHoliday) cls = 'weekend';
+    if (isHoliday) cls += ' holiday';
+    if (!isWeekend && !isHoliday) workDays++;
+
+    html += `<td class="${cls}">${d}</td>`;
+    if ((offset + d) % 7 === 0 && d < daysInMonth) html += '</tr><tr>';
+  }
+
+  const tail = (offset + daysInMonth) % 7;
+  if (tail !== 0) for (let i = tail; i < 7; i++) html += '<td class="empty"></td>';
+  html += '</tr>';
+
+  document.getElementById('calendar').innerHTML = html;
+
+  const daysOff = daysInMonth - workDays;
+  document.getElementById('stats').innerHTML =
+    `Рабочих дней: <b>${workDays}</b> &nbsp;|&nbsp; Выходных и праздников: ${daysOff}`;
+}
+
+select.addEventListener('change', e => render(+e.target.value));
+select.value = 0; // по умолчанию — текущий месяц не нужен, стартуем с января
+render(0);
+</script>
+
+</body>
+</html>
